@@ -22,13 +22,6 @@ def validate_file(file_path: str):
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Unsupported file format."
         )
-    
-    file_size_mb=os.path.getsize(file_path)/1024*1024
-    if file_size_mb>20:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail="File too large (max 20 MB)."
-        )
 
 def extract_text(file_path: str)-> str:
     #Extracts text from pdfs, images and excel sheets
@@ -45,9 +38,9 @@ def extract_text(file_path: str)-> str:
                     page_text=page.extract_text()
                     #page_table=page.extract_table()
                     if page_text:
-                        text_ouput+=page_text+"\n"
+                        text_output+=page_text+"\n"
                     # if page_table:
-                    #     text_ouput+=page_table+"\n"
+                    #     text_output+=page_table+"\n"
             if not text_output.strip():
                 #if no text found then fallback OCR for scanned pdfs
                 from pdf2image import convert_from_path
@@ -57,7 +50,7 @@ def extract_text(file_path: str)-> str:
 
         elif ext in ["xlsx", "xls"]: #for excel files
             df=pd.read_excel(file_path)
-            text_ouput=df.to_string(index=False)
+            text_output=df.to_string(index=False)
         
         elif ext in ["jpg", "jpeg", "png"]: #for image files
             image=Image.open(file_path)

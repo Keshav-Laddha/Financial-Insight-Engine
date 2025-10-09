@@ -14,7 +14,7 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 ALLOWED_EXTENSIONS={".pdf"}
 
-MAX_FILE_SIZE=20*1024*1024 #20 MB
+#MAX_FILE_SIZE=20*1024*1024 #20 MB
 
 @router.post("/", response_class=JSONResponse, status_code=201)
 async def upload_file(file: UploadFile=File(...)) -> Dict[str, str]:
@@ -33,18 +33,34 @@ async def upload_file(file: UploadFile=File(...)) -> Dict[str, str]:
     file_path=UPLOAD_DIR / safe_filename
 
     contents=await file.read()
-    if len(contents)>MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail="File too large. Max 20 MB allowed.")
-    
-    #write to disk
+
+    #write to disk/ save the uploaded file
     try:
         with open(file_path, "wb") as buffer:
             buffer.write(contents)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving file: {str(e)}")
     
+    #respond with metadata
+    return {
+        "message": "File uploaded successfully",
+        "file_id": file_id,
+        "stored_as": safe_filename,
+    }
+
+@router.post("/extract-text/{file_id}", response_class=JSONResponse)
+async def extract_text_endpoint(file_id: str):
+    #find the file in the uploads directory
+    file_path=next(UPLOAD_DIR.glob(f"{file_id}.*"), None)
+    if not file_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File not found"
+        )
+    
+    #extract text
     try:
-        extracted_text = extract_text(str(file_path))
+        extracted_text=extract_text(str(file_path))
     except HTTPException as e:
         #forward handled HTTP errors (like unsupported format)
         raise e
@@ -53,11 +69,4 @@ async def upload_file(file: UploadFile=File(...)) -> Dict[str, str]:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Text extraction failed: {type(e).__name__}"
         )
-    
-    #respond with metadata
-    return {
-        "message": "File uploaded successfully",
-        "file_id": file_id,
-        "stored_as": safe_filename,
-        "extracted_text": extracted_text[:10000]  # cap to prevent oversized responses
-    }
+    return {"extracted_text": extracted_text}
