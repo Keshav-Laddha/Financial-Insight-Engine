@@ -1,8 +1,8 @@
-flask
 pandas
 numpy
 fastapi
 uvicorn
+python-multipart
 python-multipart
 pdfplumber
 pytesseract
