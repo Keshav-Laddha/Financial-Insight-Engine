@@ -5,6 +5,8 @@ import pytesseract #for OCR(Optical Character Recognition) for scanned images fi
 from PIL import Image #opens and processes image files (png, jpg) before OCR
 from fastapi import HTTPException, status
 
+pytesseract.pytesseract.tesseract_cmd = r"C:\Users\kesha\AppData\Local\Programs\Tesseract-OCR\tesseract.exe"
+
 #optional import only used for scanned PDFs (lazy import pattern)
 #this avoids unnecessary dependency load for non-PDF files
 from typing import Optional
@@ -43,17 +45,33 @@ def extract_text(file_path: str)-> str:
                     #     text_output+=page_table+"\n"
             if not text_output.strip():
                 #if no text found then fallback OCR for scanned pdfs
-                from pdf2image import convert_from_path
-                images=convert_from_path(file_path, dpi=200) #convert pdf to images
-                for img in images:
-                    text_output+=pytesseract.image_to_string(img, lang='eng')+"\n"
+                # from pdf2image import convert_from_path
+                # images=convert_from_path(file_path, dpi=200) #convert pdf to images
+                # for img in images:
+                #     text_output+=pytesseract.image_to_string(img, lang='eng')+"\n"
+
+                try:
+                    from pdf2image import convert_from_path
+                    #images = convert_from_path(file_path, dpi=200)
+                    images = convert_from_path(
+                        file_path,
+                        dpi=200,
+                        poppler_path=r"C:\Users\kesha\OneDrive\Desktop\poppler\poppler-25.07.0\Library\bin"
+                    )
+                    for img in images:
+                        text_output+=pytesseract.image_to_string(img, lang='eng')+"\n"
+                except Exception as e:
+                    raise HTTPException(
+                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        detail="Poppler is not installed or PDF conversion failed. Please install Poppler and try again."
+                    )
 
         elif ext in ["xlsx", "xls"]: #for excel files
             df=pd.read_excel(file_path)
             text_output=df.to_string(index=False)
         
         elif ext in ["jpg", "jpeg", "png"]: #for image files
-            image=Image.open(file_path)
+            image=Image.open(file_path).convert("L") #grayscale for better OCR
             text_output=pytesseract.image_to_string(image, lang='eng')
         
         else:
