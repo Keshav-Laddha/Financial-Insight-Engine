@@ -1,17 +1,47 @@
 # Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-venv/
+*.db
+*.sqlite3
 
-# Node.js
-node_modules/
+# Environment
 .env
+.env.*
 
 # Logs
 *.log
 
-# OS specific
+# Virtual environment
+venv/
+env/
+
+# Node
+node_modules/
+build/
+dist/
+*.lock
+
+# IDE / OS files
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
+
+# Uploads and temporary data
+uploads/
+temp/
+__files__/
+
+# Compiled stuff
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Jupyter notebooks checkpoints
+.ipynb_checkpoints/
+
+# Cache
+*.cache/
