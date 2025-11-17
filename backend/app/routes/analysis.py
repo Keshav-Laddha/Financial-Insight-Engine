@@ -1,65 +1,65 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 from pathlib import Path
-from app.services.ocr_service import extract_text
+from app.services.ocr_service import extract_text_and_tables
 from app.services.parser_service import parse_financial_document
 from app.services.financial_analysis_service import compute_kpis
+from app.services.trend_analysis_service import compute_trends
 
 router = APIRouter()
 
 UPLOAD_DIR = Path("uploads")
 
-
-@router.get("/{file_id}", tags=["Analysis"])
-async def extract_text_endpoint(file_id: str):
+@router.get("/{file_id}")
+async def analyze_file_compat(file_id: str):
     """
-    Given a previously uploaded file ID, run extraction -> parsing -> KPI computation.
-    Returns cleaned_text, parsed_data and kpis.
+    Legacy GET route to support frontend using /analyze/{file_id}
     """
-    file_path = next(UPLOAD_DIR.glob(f"{file_id}.*"), None)
+    # Reconstruct file path
+    file_path = UPLOAD_DIR / file_id
 
-    if not file_path or not file_path.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="File not found."
-        )
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found.")
 
     try:
-        extracted = extract_text(str(file_path))
+        extracted = extract_text_and_tables(str(file_path))
         cleaned = extracted.get("cleaned_text", "")
         tables = extracted.get("tables", [])
-        parsed_data = parse_financial_document(cleaned, tables)
-        kpis = compute_kpis(parsed_data)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Processing failed: {repr(e)}")
+        scale = extracted.get("scale_detected", 1)
 
-    response = {
-        "file_id": file_id,
-        "cleaned_text": cleaned[:10000],
-        "parsed_data": parsed_data,
-        "kpis": kpis
-    }
-    if parsed_data.get("validation_warning"):
-        response["validation_warning"] = parsed_data["validation_warning"]
-    return response
+        parsed = parse_financial_document(cleaned, tables, scale)
+        kpis = compute_kpis(parsed)
+        trends = compute_trends(parsed)
+
+        return {
+            "balance_sheet": parsed.get("sections", {}).get("balance_sheet", []),
+            "pnl": parsed.get("sections", {}).get("pnl", {}),
+            "cash_flow": parsed.get("sections", {}).get("cash_flow", {}),
+            "kpis": kpis,
+            "trends": trends
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 
 # from fastapi import APIRouter, HTTPException, status
 # from pathlib import Path
-# from app.services.ocr_service import extract_text
+# from app.services.ocr_service import extract_text_and_tables
 # from app.services.parser_service import parse_financial_document
 # from app.services.financial_analysis_service import compute_kpis
 
-# router=APIRouter()
+# router = APIRouter()
 
-# UPLOAD_DIR=Path("uploads")  #same directory as uploads
+# UPLOAD_DIR = Path("uploads")
+
 
 # @router.get("/{file_id}", tags=["Analysis"])
 # async def extract_text_endpoint(file_id: str):
-#     #extract text from an already uploaded file.
-#     #look for file with any extension (safer)
-#     file_path=next(UPLOAD_DIR.glob(f"{file_id}.*"), None)
+#     """
+#     Given a previously uploaded file ID, run extraction -> parsing -> KPI computation.
+#     Returns cleaned_text, parsed_data and kpis.
+#     """
+#     file_path = next(UPLOAD_DIR.glob(f"{file_id}.*"), None)
 
 #     if not file_path or not file_path.exists():
 #         raise HTTPException(
@@ -68,18 +68,18 @@ async def extract_text_endpoint(file_id: str):
 #         )
 
 #     try:
-#         extracted=extract_text(str(file_path))
-#         cleaned=extracted.get("cleaned_text", "")
-#         tables=extracted.get("tables", [])
-#         parsed_data=parse_financial_document(cleaned, tables)
-#         kpis=compute_kpis(parsed_data)
+#         extracted = extract_text_and_tables(str(file_path))
+#         cleaned = extracted.get("cleaned_text", "")
+#         tables = extracted.get("tables", [])
+#         parsed_data = parse_financial_document(cleaned, tables)
+#         kpis = compute_kpis(parsed_data)
+#     except HTTPException:
+#         raise
 #     except Exception as e:
 #         raise HTTPException(status_code=500, detail=f"Processing failed: {repr(e)}")
 
-#     #limit response size to avoid very large payloads
-#     response={
+#     response = {
 #         "file_id": file_id,
-#         #"raw_text": extracted.get("raw_text", "")[:20000],
 #         "cleaned_text": cleaned[:10000],
 #         "parsed_data": parsed_data,
 #         "kpis": kpis
