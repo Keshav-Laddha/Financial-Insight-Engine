@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { api, validateFile, formatFileSize, ALLOWED_EXTENSIONS } from "../utils/api";
 
 const LAST_UPLOAD_KEY = "lastUploadResult";
+const LAST_COMPANY_KEY = "latestCompanyName";
 
 export default function UploadComponent() {
   const [file, setFile] = useState(null);
@@ -10,6 +11,7 @@ export default function UploadComponent() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [validationError, setValidationError] = useState(null);
+  const [company, setCompany] = useState(() => localStorage.getItem(LAST_COMPANY_KEY));
 
   // Load last upload result from sessionStorage on mount
   useEffect(() => {
@@ -19,6 +21,9 @@ export default function UploadComponent() {
         const parsed = JSON.parse(lastResult);
         setResult(parsed);
         setUploadProgress("complete");
+        if (parsed?.upload?.company) {
+          setCompany(parsed.upload.company);
+        }
       } catch (err) {
         console.error("Failed to load last upload result:", err);
       }
@@ -71,12 +76,19 @@ export default function UploadComponent() {
       const analysisData = await api.analyzeFile(uploadData.file_id);
 
       // Store file info in localStorage for UploadedFilesPage
+      const detectedCompany = uploadData.company || company || null;
+      if (detectedCompany) {
+        setCompany(detectedCompany);
+        localStorage.setItem(LAST_COMPANY_KEY, detectedCompany);
+      }
+
       const fileInfo = {
         id: uploadData.file_id,
         name: file.name,
         uploadedAt: new Date().toISOString(),
         size: file.size,
         type: file.type,
+        company: detectedCompany,
       };
 
       const storedFiles = localStorage.getItem("uploadedFiles");
@@ -186,6 +198,11 @@ export default function UploadComponent() {
                 <p>
                   <strong>Status:</strong> {result.upload.message}
                 </p>
+                {company && (
+                  <p>
+                    <strong>Company:</strong> {company}
+                  </p>
+                )}
               </div>
 
               {result.analysis && (

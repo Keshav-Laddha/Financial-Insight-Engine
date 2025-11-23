@@ -4,6 +4,7 @@ from app.services.ocr_service import extract_text_and_tables
 from app.services.parser_service import parse_financial_document
 from app.services.financial_analysis_service import compute_kpis
 from app.services.trend_analysis_service import compute_trends
+from app.utils.company_extract import extract_company_name
 
 router = APIRouter()
 
@@ -35,7 +36,8 @@ async def analyze_file_compat(file_id: str):
             "pnl": parsed.get("sections", {}).get("pnl", {}),
             "cash_flow": parsed.get("sections", {}).get("cash_flow", {}),
             "kpis": kpis,
-            "trends": trends
+            "trends": trends,
+            "company_name": extract_company_name(file_id),
         }
 
     except Exception as e:

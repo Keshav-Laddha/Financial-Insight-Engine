@@ -2,6 +2,8 @@ import os
 import uuid
 from fastapi import APIRouter, UploadFile, File, HTTPException, status
 
+from app.utils.company_extract import extract_company_name
+
 router = APIRouter()
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "uploads")
@@ -32,10 +34,14 @@ async def upload_file(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Could not save file: {e}")
 
+    detected_company = extract_company_name(filename)
+
     return {
         "message": "File uploaded successfully.",
         "file_id": unique_name,
-        "file_path": file_path
+        "stored_as": unique_name,
+        "file_path": file_path,
+        "company": detected_company,
     }
 
 

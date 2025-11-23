@@ -8,3 +8,4 @@ pdfplumber
 pytesseract
 pdf2image
 python-dotenv
+httpx
