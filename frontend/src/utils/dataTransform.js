@@ -99,6 +99,12 @@ export const transformAnalysisData = (rawData) => {
     }
   }
 
+  const companyName =
+    (typeof rawData.company_name === "string" && rawData.company_name) ||
+    (typeof rawData.company === "string" && rawData.company) ||
+    "";
+  transformed.company_name = companyName ? companyName.toUpperCase() : "";
+
   return transformed;
 };
 

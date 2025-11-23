@@ -11,7 +11,7 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
-import { api } from "../utils/api";
+import { api, API_BASE_URL } from "../utils/api";
 import {
   transformAnalysisData,
   prepareTrendDataForChart,
@@ -21,6 +21,8 @@ import LineChartComponent from "../components/charts/LineChartComponent";
 import PieChartComponent from "../components/charts/PieChartComponent";
 import ComparisonChart from "../components/charts/ComparisonChart";
 
+const COMPANY_STORAGE_KEY = "latestCompanyName";
+
 export default function DashboardPage() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -28,6 +30,12 @@ export default function DashboardPage() {
   const [analysisData, setAnalysisData] = useState(null);
   const [selectedFileId, setSelectedFileId] = useState(null);
   const [files, setFiles] = useState([]);
+  const [news, setNews] = useState([]);
+  const [newsLoading, setNewsLoading] = useState(false);
+  const [newsError, setNewsError] = useState(null);
+  const [currentCompany, setCurrentCompany] = useState(
+    () => localStorage.getItem(COMPANY_STORAGE_KEY) || ""
+  );
 
   // ========== SAFETY HELPERS ==========
   const safeNumber = (v) =>
@@ -86,6 +94,10 @@ export default function DashboardPage() {
       const rawData = await api.analyzeFile(fileId);
       const transformed = transformAnalysisData(rawData);
       setAnalysisData(transformed);
+      if (transformed?.company_name) {
+        setCurrentCompany(transformed.company_name);
+        localStorage.setItem(COMPANY_STORAGE_KEY, transformed.company_name);
+      }
     } catch (err) {
       console.error("Failed to load analysis:", err);
       setError(err.message || "Failed to load analysis data");
@@ -178,7 +190,75 @@ export default function DashboardPage() {
     ratioKpiData.length > 0 ||
     safeBalanceSheet.length > 0 ||
     Object.keys(safePnL).length > 0 ||
-    Object.keys(safeCashFlow).length > 0;
+    Object.keys(safeCashFlow).length > 0 ||
+    news.length > 0;
+
+  // ========== FETCH NEWS WHEN COMPANY CHANGES ==========
+  useEffect(() => {
+    const nameFromStorage = localStorage.getItem(COMPANY_STORAGE_KEY) || "";
+    if (!currentCompany && nameFromStorage) {
+      setCurrentCompany(nameFromStorage);
+    }
+  }, [currentCompany]);
+
+  useEffect(() => {
+    const trimmed = currentCompany?.trim();
+    if (!trimmed) {
+      setNews([]);
+      setNewsError(null);
+      setNewsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchNews = async () => {
+      setNewsLoading(true);
+      setNewsError(null);
+
+      try {
+        const response = await fetch(
+          `${API_BASE_URL}/news/${encodeURIComponent(trimmed)}`
+        );
+        let payload = null;
+        try {
+          payload = await response.json();
+        } catch {
+          payload = null;
+        }
+
+        if (!response.ok) {
+          const message =
+            (payload && (payload.detail || payload.message)) ||
+            "Unable to fetch news right now.";
+          throw new Error(message);
+        }
+
+        const articles = Array.isArray(payload)
+          ? payload
+          : payload?.articles || [];
+
+        if (!cancelled) {
+          setNews(articles);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setNews([]);
+          setNewsError(err.message || "Unable to fetch news right now.");
+        }
+      } finally {
+        if (!cancelled) {
+          setNewsLoading(false);
+        }
+      }
+    };
+
+    fetchNews();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCompany]);
 
   // ========== RENDER STATES ==========
   if (loading && !analysisData) {
@@ -333,6 +413,66 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Company News */}
+      {currentCompany && (
+        <div className="card">
+          <div className="news-header">
+            <div>
+              <h3>Latest news on {currentCompany}</h3>
+              <p className="muted">Stay on top of recent developments.</p>
+            </div>
+            {newsLoading && <span className="muted">Fetching news…</span>}
+          </div>
+
+          {newsError && (
+            <div className="alert alert-warning" style={{ marginTop: 12 }}>
+              {newsError}
+            </div>
+          )}
+
+          {!newsLoading && !newsError && news.length === 0 && (
+            <p className="muted" style={{ marginTop: 12 }}>
+              No recent news articles available.
+            </p>
+          )}
+
+          {news.length > 0 && (
+            <div className="news-grid">
+              {news.map((article, idx) => (
+                <article key={article.url || idx} className="news-card">
+                  {article.image ? (
+                    <div
+                      className="news-img"
+                      style={{ backgroundImage: `url(${article.image})` }}
+                    />
+                  ) : (
+                    <div className="news-img news-img--placeholder">
+                      No image
+                    </div>
+                  )}
+                  <div className="news-body">
+                    <h4 className="news-title">{article.title}</h4>
+                    <p className="news-desc">
+                      {article.description || "No description available."}
+                    </p>
+                    {article.url && (
+                      <a
+                        className="news-btn"
+                        href={article.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Read More →
+                      </a>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Balance sheet pie */}
       {safeBalanceSheet.length > 0 && (
         <PieChartComponent
@@ -348,12 +488,7 @@ export default function DashboardPage() {
           data={[
             {
               name: "Financial Metrics",
-              ...Object.fromEntries(
-                Object.entries(safePnL).map(([k, v]) => [
-                  k.replace(/_/g, " "),
-                  v,
-                ])
-              ),
+              ...safePnL,
             },
           ]}
           dataKeys={Object.keys(safePnL)}

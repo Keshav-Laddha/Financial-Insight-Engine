@@ -1,5 +1,8 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
-from app.routes import upload, analysis
+from app.routes import upload, analysis, news
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -27,6 +30,7 @@ app.add_middleware(
 
 app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(analysis.router, prefix="/analyze", tags=["Analysis"])
+app.include_router(news.router, prefix="/news", tags=["News"])
 
 
 @app.get("/ping", tags=["Health"])
