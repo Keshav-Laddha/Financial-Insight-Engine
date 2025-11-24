@@ -1,11 +1,14 @@
 import { NavLink } from "react-router-dom";
-import { FiUpload, FiBarChart2, FiFolder, FiMenu, FiX } from "react-icons/fi";
+import { FiUpload, FiBarChart2, FiFolder, FiMenu, FiX, FiFileText } from "react-icons/fi";
 
 export default function Sidebar({ collapsed, toggle }) {
   const navItems = [
     { path: "/upload", icon: FiUpload, label: "Upload" },
     { path: "/dashboard", icon: FiBarChart2, label: "Dashboard" },
     { path: "/files", icon: FiFolder, label: "Uploaded Files" },
+
+    // ✅ NEW ITEM BELOW (Company Summary)
+    { path: "/summary", icon: FiFileText, label: "Company Summary" },
   ];
 
   return (

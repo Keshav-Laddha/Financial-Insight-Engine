@@ -5,6 +5,8 @@ import Layout from "./components/Layout";
 import UploadPage from "./pages/UploadPage";
 import DashboardPage from "./pages/DashboardPage";
 import UploadedFilesPage from "./pages/UploadedFilesPage";
+import SummaryPage from "./pages/SummaryPage";
+
 
 export default function App() {
   return (
@@ -14,6 +16,7 @@ export default function App() {
         <Route path="/upload" element={<UploadPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/files" element={<UploadedFilesPage />} />
+        <Route path="/summary" element={<SummaryPage />} />
       </Routes>
     </Layout>
   );

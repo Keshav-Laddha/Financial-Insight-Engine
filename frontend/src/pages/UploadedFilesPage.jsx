@@ -141,21 +141,31 @@ export default function UploadedFilesPage() {
                     </td>
                     <td>{formatDate(f.uploadedAt)}</td>
                     <td>
-                      <div className="action-buttons">
+                        <div className="action-buttons">
                         <button
                           className="btn small btn-primary"
-                          onClick={() => handleView(f.id)}
+                          onClick={() => handleView(f.stored_as || f.id)}
                           title="View in Dashboard"
                         >
                           View
                         </button>
+
                         <button
                           className="btn small"
-                          onClick={() => handleAnalyze(f.id)}
+                          onClick={() => handleAnalyze(f.stored_as || f.id)}
                           title="Analyze"
                         >
                           Analyze
                         </button>
+
+                        <button
+                          className="btn small"
+                          onClick={() => navigate(`/summary?id=${f.stored_as || f.id}`)}
+                          title="Company Summary"
+                        >
+                          Summary
+                        </button>
+
                         <button
                           className="btn small btn-danger"
                           onClick={() => handleDelete(f.id, f.name)}
@@ -165,6 +175,7 @@ export default function UploadedFilesPage() {
                           {deletingId === f.id ? "Deleting..." : "Delete"}
                         </button>
                       </div>
+
                     </td>
                   </tr>
                 ))}

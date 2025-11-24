@@ -568,6 +568,46 @@ body{
   text-decoration:underline;
 }
 
+
+.summary-input-box {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.summary-input-box input {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+}
+
+.summary-input-box button {
+  padding: 10px 16px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.summary-box {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-top: 20px;
+}
+
+.summary-box pre {
+  white-space: pre-wrap;
+  background: #f6f6f6;
+  padding: 10px;
+  border-radius: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .main-content {
