@@ -43,6 +43,24 @@ export const api = {
     return await response.json();
   },
 
+  async getSummary(fileId) {
+    const response = await fetch(`${API_BASE_URL}/summary/${fileId}`, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      let err;
+      try {
+        err = await response.json();
+      } catch {
+        throw new Error("Summary fetch failed");
+      }
+      throw new Error(err.detail || "Summary fetch failed");
+    }
+
+    return await response.json();
+  },
+
   async getFiles() {
     // Note: This endpoint doesn't exist yet in the backend
     // For now, we'll use localStorage as a fallback

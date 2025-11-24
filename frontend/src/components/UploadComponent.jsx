@@ -1,19 +1,22 @@
 import { useState, useEffect } from "react";
-import { api, validateFile, formatFileSize, ALLOWED_EXTENSIONS } from "../utils/api";
+import { useNavigate } from "react-router-dom";
+import { api, validateFile, formatFileSize } from "../utils/api";
 
 const LAST_UPLOAD_KEY = "lastUploadResult";
 const LAST_COMPANY_KEY = "latestCompanyName";
 
 export default function UploadComponent() {
+  const navigate = useNavigate();
+
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState("idle"); // idle, uploading, analyzing, complete
+  const [uploadProgress, setUploadProgress] = useState("idle");
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [validationError, setValidationError] = useState(null);
   const [company, setCompany] = useState(() => localStorage.getItem(LAST_COMPANY_KEY));
 
-  // Load last upload result from sessionStorage on mount
+  // Load last upload result
   useEffect(() => {
     const lastResult = sessionStorage.getItem(LAST_UPLOAD_KEY);
     if (lastResult) {
@@ -38,7 +41,6 @@ export default function UploadComponent() {
       return;
     }
 
-    // Validate file
     const validation = validateFile(selectedFile);
     if (!validation.isValid) {
       setValidationError(validation.errors.join(". "));
@@ -63,27 +65,29 @@ export default function UploadComponent() {
     setUploadProgress("uploading");
 
     try {
-      // Step 1: Upload the file
+      // Step 1 — Upload file
       const uploadData = await api.uploadFile(file);
-      
+
       if (!uploadData.file_id) {
         throw new Error("Upload failed: No file ID returned");
       }
 
       setUploadProgress("analyzing");
 
-      // Step 2: Analyze the file
+      // Step 2 — Analyze file
       const analysisData = await api.analyzeFile(uploadData.file_id);
 
-      // Store file info in localStorage for UploadedFilesPage
+      // Save detected company
       const detectedCompany = uploadData.company || company || null;
       if (detectedCompany) {
         setCompany(detectedCompany);
         localStorage.setItem(LAST_COMPANY_KEY, detectedCompany);
       }
 
+      // Store file for UploadedFiles page
       const fileInfo = {
         id: uploadData.file_id,
+        stored_as: uploadData.stored_as, // IMPORTANT
         name: file.name,
         uploadedAt: new Date().toISOString(),
         size: file.size,
@@ -91,25 +95,30 @@ export default function UploadComponent() {
         company: detectedCompany,
       };
 
-      const storedFiles = localStorage.getItem("uploadedFiles");
-      const files = storedFiles ? JSON.parse(storedFiles) : [];
-      files.unshift(fileInfo);
-      localStorage.setItem("uploadedFiles", JSON.stringify(files));
+      const storedFiles = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
+      storedFiles.unshift(fileInfo);
+      localStorage.setItem("uploadedFiles", JSON.stringify(storedFiles));
 
+      // Full upload result
       const uploadResult = {
         upload: uploadData,
         analysis: analysisData,
       };
-      
+
       setResult(uploadResult);
       setUploadProgress("complete");
 
-      // Store result in sessionStorage for tab-level persistence
       sessionStorage.setItem(LAST_UPLOAD_KEY, JSON.stringify(uploadResult));
+      localStorage.setItem("LAST_SUMMARY_FILE_ID", uploadData.file_id);
 
-      // Clear file input
+
+      // Clear input
       document.getElementById("fileInput").value = "";
       setFile(null);
+
+      // ⭐ Redirect to Summary Page
+      // navigate(`/summary?id=${uploadData.stored_as}`);
+
     } catch (err) {
       console.error(err);
       setError(err.message || "Upload and analysis failed");
@@ -121,14 +130,10 @@ export default function UploadComponent() {
 
   const getProgressText = () => {
     switch (uploadProgress) {
-      case "uploading":
-        return "Uploading file...";
-      case "analyzing":
-        return "Analyzing document...";
-      case "complete":
-        return "Complete!";
-      default:
-        return "";
+      case "uploading": return "Uploading file...";
+      case "analyzing": return "Analyzing document...";
+      case "complete": return "Complete!";
+      default: return "";
     }
   };
 
@@ -142,6 +147,7 @@ export default function UploadComponent() {
           onChange={handleFileChange}
           style={{ display: "none" }}
         />
+
         <div className="upload-actions">
           <button
             className="btn"
@@ -150,6 +156,7 @@ export default function UploadComponent() {
           >
             Choose File
           </button>
+
           <button
             className="btn primary"
             onClick={handleUpload}
@@ -158,6 +165,7 @@ export default function UploadComponent() {
             {loading ? getProgressText() : "Upload & Analyze"}
           </button>
         </div>
+
         <div className="hint">
           {file ? (
             <div className="file-info">
@@ -168,79 +176,70 @@ export default function UploadComponent() {
             <span>No file chosen</span>
           )}
         </div>
+
         {validationError && (
           <div className="alert alert-warning" style={{ marginTop: "12px" }}>
             {validationError}
           </div>
         )}
+
         <div className="file-hint">
-          <small>
-            Supported format: PDF only. Max size: 50MB
-          </small>
+          <small>Supported format: PDF only. Max size: 50MB</small>
         </div>
       </div>
 
+      {/* EXISTING RESULT UI (unchanged) */}
       <div style={{ marginTop: 18 }}>
         {error && (
           <div className="alert alert-error">
             <strong>Error:</strong> {error}
           </div>
         )}
+
         {result && (
           <div className="result">
             <h4>✅ Upload & Analysis Complete</h4>
             <div className="result-content">
               <div className="result-section">
                 <h5>File Information</h5>
-                <p>
-                  <strong>File ID:</strong> {result.upload.file_id}
-                </p>
-                <p>
-                  <strong>Status:</strong> {result.upload.message}
-                </p>
-                {company && (
-                  <p>
-                    <strong>Company:</strong> {company}
-                  </p>
-                )}
+                <p><strong>File ID:</strong> {result.upload.file_id}</p>
+                <p><strong>Status:</strong> {result.upload.message}</p>
+                {company && <p><strong>Company:</strong> {company}</p>}
               </div>
 
-              {result.analysis && (
-                <>
-                  {result.analysis.kpis && (
-                    <div className="result-section">
-                      <h5>Key Performance Indicators</h5>
-                      <div className="kpis-grid">
-                        {Object.entries(result.analysis.kpis).map(([key, value]) => (
-                          <div key={key} className="kpi-item">
-                            <span className="kpi-label">{key.replace(/_/g, " ")}</span>
-                            <span className="kpi-value">{value}</span>
-                          </div>
-                        ))}
+              {result.analysis?.kpis && (
+                <div className="result-section">
+                  <h5>Key Performance Indicators</h5>
+                  <div className="kpis-grid">
+                    {Object.entries(result.analysis.kpis).map(([key, value]) => (
+                      <div key={key} className="kpi-item">
+                        <span className="kpi-label">{key.replace(/_/g, " ")}</span>
+                        <span className="kpi-value">{value}</span>
                       </div>
-                    </div>
-                  )}
-
-                  {result.analysis.trends && (
-                    <div className="result-section">
-                      <h5>Trends</h5>
-                      <pre className="result-json">
-                        {JSON.stringify(result.analysis.trends, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-
-                  <div className="result-section">
-                    <h5>Full Analysis Data</h5>
-                    <details>
-                      <summary>View detailed analysis</summary>
-                      <pre className="result-json">
-                        {JSON.stringify(result.analysis, null, 2)}
-                      </pre>
-                    </details>
+                    ))}
                   </div>
-                </>
+                </div>
               )}
+
+              {result.analysis?.trends && (
+                <div className="result-section">
+                  <h5>Trends</h5>
+                  <pre className="result-json">
+                    {JSON.stringify(result.analysis.trends, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div className="result-section">
+                <h5>Full Analysis Data</h5>
+                <details>
+                  <summary>View detailed analysis</summary>
+                  <pre className="result-json">
+                    {JSON.stringify(result.analysis, null, 2)}
+                  </pre>
+                </details>
+              </div>
+
             </div>
           </div>
         )}
@@ -248,3 +247,4 @@ export default function UploadComponent() {
     </div>
   );
 }
+// changes kiye hai bhai pls haggna mat
