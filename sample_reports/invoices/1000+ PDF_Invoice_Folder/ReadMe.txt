@@ -1,1 +1,0 @@
-These invoices were created by Ajigbayi, Oluwafemi Tosin on 5-June-2013 using the 2016 version of the Superstore dataset provided by Tableau. 

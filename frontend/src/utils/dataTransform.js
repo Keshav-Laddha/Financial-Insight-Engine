@@ -30,7 +30,8 @@ export const transformAnalysisData = (rawData) => {
     balance_sheet: [],
     pnl: {},
     cash_flow: {},
-    kpis: {},
+    important_kpis: rawData.important_kpis || {},
+    kpis: rawData.important_kpis || {},
     trends: {},
   };
 
@@ -68,16 +69,16 @@ export const transformAnalysisData = (rawData) => {
     });
   }
 
-  // Transform KPIs (already in good format, but ensure all values are numbers)
-  if (rawData.kpis && typeof rawData.kpis === "object") {
-    Object.entries(rawData.kpis).forEach(([key, value]) => {
-      // Skip summary strings
-      if (typeof value === "string") {
-        return;
-      }
-      transformed.kpis[key] = typeof value === "number" ? value : 0;
-    });
-  }
+  // // Transform KPIs (already in good format, but ensure all values are numbers)
+  // if (rawData.kpis && typeof rawData.kpis === "object") {
+  //   Object.entries(rawData.kpis).forEach(([key, value]) => {
+  //     // Skip summary strings
+  //     if (typeof value === "string") {
+  //       return;
+  //     }
+  //     transformed.kpis[key] = typeof value === "number" ? value : 0;
+  //   });
+  // }
 
   // Transform Trends
   // If trends is empty, try to create trends from balance_sheet or other data

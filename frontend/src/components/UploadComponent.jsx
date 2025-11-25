@@ -15,6 +15,9 @@ export default function UploadComponent() {
   const [error, setError] = useState(null);
   const [validationError, setValidationError] = useState(null);
   const [company, setCompany] = useState(() => localStorage.getItem(LAST_COMPANY_KEY));
+  const [importantKpis, setImportantKpis] = useState({});
+
+
 
   // Load last upload result
   useEffect(() => {
@@ -76,6 +79,7 @@ export default function UploadComponent() {
 
       // Step 2 — Analyze file
       const analysisData = await api.analyzeFile(uploadData.file_id);
+      setImportantKpis(analysisData.important_kpis || {}); //change
 
       // Save detected company
       const detectedCompany = uploadData.company || company || null;
@@ -108,14 +112,20 @@ export default function UploadComponent() {
       setResult(uploadResult);
       setUploadProgress("complete");
 
-      sessionStorage.setItem(LAST_UPLOAD_KEY, JSON.stringify(uploadResult));
-      localStorage.setItem("LAST_SUMMARY_FILE_ID", uploadData.file_id);
+      
+      //localStorage.setItem("LAST_SUMMARY_FILE_ID", uploadData.file_id);
 
+      localStorage.setItem("LATEST_FILE_ID", uploadData.file_id);
+      localStorage.setItem("LATEST_ANALYSIS_DATA", JSON.stringify(analysisData));
+      localStorage.setItem("LAST_SUMMARY_FILE_ID", uploadData.file_id);
+      localStorage.removeItem("LAST_SUMMARY_DATA");   // ❗ VERY IMPORTANT
+
+      sessionStorage.setItem(LAST_UPLOAD_KEY, JSON.stringify(uploadResult));
 
       // Clear input
-      document.getElementById("fileInput").value = "";
+      
       setFile(null);
-
+      document.getElementById("fileInput").value = "";
       // ⭐ Redirect to Summary Page
       // navigate(`/summary?id=${uploadData.stored_as}`);
 
@@ -206,6 +216,76 @@ export default function UploadComponent() {
                 <p><strong>Status:</strong> {result.upload.message}</p>
                 {company && <p><strong>Company:</strong> {company}</p>}
               </div>
+
+              {/* ⭐ IMPORTANT KPIS SECTION ⭐ */}
+              {importantKpis && (
+                <div className="result-section" style={{ marginTop: "20px" }}>
+                  <h5>Key Highlights (Data in ₹ Millions)</h5>
+
+                  {/* earlier correct */}
+                  {/* <div className="kpis-grid">
+                    {Object.entries(importantKpis)
+                      .filter(([key]) => key !== "ratios")
+                      .map(([key, value]) => (
+                        value !== null &&
+                        <div key={key} className="kpi-item">
+                          <span className="kpi-label">
+                            {key.replace(/_/g, " ").toUpperCase()}
+                          </span>
+                          <span className="kpi-value">
+                            {value.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                  </div> */}
+
+                  <div className="kpis-grid">
+                    {Object.entries(importantKpis)
+                      .filter(([key]) => key !== "ratios")
+                      .map(([key, value]) => {
+
+                        if (typeof value === "object" && value !== null) {
+                          // It's a period object -> show properly
+                          return (
+                            <div key={key} className="kpi-item">
+                              <span className="kpi-label">{key.replace(/_/g, " ").toUpperCase()}</span>
+                              <span className="kpi-value">
+                                {`2025: ${value.latest ?? "-"}, 2024: ${value.prev1 ?? "-"}, 2023: ${value.prev2 ?? "-"}`}
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        // Normal KPI
+                        return (
+                          <div key={key} className="kpi-item">
+                            <span className="kpi-label">{key.replace(/_/g, " ").toUpperCase()}</span>
+                            <span className="kpi-value">{Number(value).toLocaleString()}</span>
+                          </div>
+                        );
+                      })}
+                  </div>
+
+
+                  {/* --- RATIOS SECTION --- */}
+                  {importantKpis.ratios && (
+                    <>
+                      <h5 style={{ marginTop: "16px" }}>Important Ratios</h5>
+                      <div className="kpis-grid">
+                        {Object.entries(importantKpis.ratios).map(([key, value]) => (
+                          value !== null &&
+                          <div key={key} className="kpi-item">
+                            <span className="kpi-label">
+                              {key.replace(/_/g, " ").toUpperCase()}
+                            </span>
+                            <span className="kpi-value">{value.toFixed(3)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {result.analysis?.kpis && (
                 <div className="result-section">
