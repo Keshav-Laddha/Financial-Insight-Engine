@@ -47,7 +47,7 @@ load_dotenv()
 
 import logging
 from fastapi import FastAPI
-from app.routes import upload, analysis, news, summary
+from app.routes import upload, analysis, news, summary, files
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 #from config.logging_config import configure_logging
@@ -78,6 +78,7 @@ app.include_router(upload.router, prefix="/upload", tags=["Upload"])
 app.include_router(analysis.router, prefix="/analyze", tags=["Analysis"])
 app.include_router(news.router, prefix="/news", tags=["News"])
 app.include_router(summary.router, prefix="/summary", tags=["Summary"])
+app.include_router(files.router, prefix="/files", tags=["Files"])
 
 
 @app.get("/ping", tags=["Health"])

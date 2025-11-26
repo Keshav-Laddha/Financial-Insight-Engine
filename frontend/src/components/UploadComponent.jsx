@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, validateFile, formatFileSize } from "../utils/api";
+import { useSearchParams } from "react-router-dom";
 
 const LAST_UPLOAD_KEY = "lastUploadResult";
 const LAST_COMPANY_KEY = "latestCompanyName";
+const SESSION_PREFIXES_TO_CLEAR = ["dashboard_", "summary_", "news_", "files_list"];
 
 export default function UploadComponent() {
   const navigate = useNavigate();
@@ -15,7 +17,12 @@ export default function UploadComponent() {
   const [error, setError] = useState(null);
   const [validationError, setValidationError] = useState(null);
   const [company, setCompany] = useState(() => localStorage.getItem(LAST_COMPANY_KEY));
-  const [importantKpis, setImportantKpis] = useState({});
+  const [importantKpis, setImportantKpis] = useState(() =>
+    JSON.parse(localStorage.getItem("LATEST_IMPORTANT_KPIS") || "{}")
+  );
+  const [params] = useSearchParams();
+  const fileIdFromURL = params.get("fileId");
+
 
 
 
@@ -35,6 +42,26 @@ export default function UploadComponent() {
       }
     }
   }, []);
+
+
+  // helper to clear session caches (prefix match)
+  const clearSessionCaches = (keepForFileId = null) => {
+    const keysToRemove = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (!k) continue;
+      for (const p of SESSION_PREFIXES_TO_CLEAR) {
+        if (k.startsWith(p)) {
+          // If keepForFileId provided and k === `dashboard_${keepForFileId}` skip removal
+          if (keepForFileId && k === `dashboard_${keepForFileId}`) continue;
+          keysToRemove.push(k);
+          break;
+        }
+      }
+    }
+    keysToRemove.forEach((k) => sessionStorage.removeItem(k));
+  };
+
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -102,6 +129,13 @@ export default function UploadComponent() {
       const storedFiles = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
       storedFiles.unshift(fileInfo);
       localStorage.setItem("uploadedFiles", JSON.stringify(storedFiles));
+      try {
+        await api.saveFileMetadata(fileInfo);
+      } catch (e) {
+        // already handled in api.saveFileMetadata; optionally log
+        console.warn("saveFileMetadata failed:", e);
+      }
+
 
       // Full upload result
       const uploadResult = {
@@ -120,6 +154,9 @@ export default function UploadComponent() {
       localStorage.setItem("LAST_SUMMARY_FILE_ID", uploadData.file_id);
       localStorage.removeItem("LAST_SUMMARY_DATA");   // ❗ VERY IMPORTANT
 
+      // Clear previous session caches (force pages to re-fetch on first open for the new file)
+      clearSessionCaches(/* keepForFileId = null */); // remove everything so fresh fetches happen
+
       sessionStorage.setItem(LAST_UPLOAD_KEY, JSON.stringify(uploadResult));
 
       // Clear input
@@ -137,6 +174,36 @@ export default function UploadComponent() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    async function loadExistingFile() {
+      if (!fileIdFromURL) return;
+
+      setLoading(true);
+      setUploadProgress("analyzing");
+
+      try {
+        const analysisData = await api.analyzeFile(fileIdFromURL);
+
+        setImportantKpis(analysisData.important_kpis || {});
+        setResult({ upload: { file_id: fileIdFromURL }, analysis: analysisData });
+
+        // Save locally so dashboard/summary also work
+        localStorage.setItem("LATEST_FILE_ID", fileIdFromURL);
+        localStorage.setItem("LATEST_ANALYSIS_DATA", JSON.stringify(analysisData));
+
+        setUploadProgress("complete");
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load saved file analysis");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadExistingFile();
+  }, [fileIdFromURL]);
+
 
   const getProgressText = () => {
     switch (uploadProgress) {

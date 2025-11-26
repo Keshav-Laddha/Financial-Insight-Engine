@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, formatFileSize, formatDate } from "../utils/api";
+import { api, formatFileSize, formatDate, API_BASE_URL } from "../utils/api";
 
 export default function UploadedFilesPage() {
   const [files, setFiles] = useState([]);
@@ -27,9 +27,13 @@ export default function UploadedFilesPage() {
     }
   };
 
-  const handleView = (fileId) => {
-    // Navigate to dashboard with the selected file
-    navigate(`/dashboard?fileId=${fileId}`);
+  const handleView = (storedAsOrId) => {
+    // Prefer stored_as when available; fallback to id
+    const filename = storedAsOrId;
+    // If backend endpoint is available:
+    const url = `${API_BASE_URL}/files/download/${encodeURIComponent(filename)}`;
+    // open in new tab - ensure popup allowed by user gesture (click)
+    window.open(url, "_blank");
   };
 
   const handleAnalyze = async (fileId) => {
@@ -144,8 +148,8 @@ export default function UploadedFilesPage() {
                         <div className="action-buttons">
                         <button
                           className="btn small btn-primary"
-                          onClick={() => handleView(f.stored_as || f.id)}
-                          title="View in Dashboard"
+                          onClick={() => navigate(`/upload?fileId=${f.stored_as || f.id}`)}
+                          title="View"
                         >
                           View
                         </button>

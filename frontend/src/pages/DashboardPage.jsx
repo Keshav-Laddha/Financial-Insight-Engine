@@ -1770,6 +1770,66 @@ export default function DashboardPage() {
     return { 2025: null, 2024: null, 2023: null };
   };
 
+  // // ===== load files & analysis =====
+  // useEffect(() => {
+  //   loadFiles();
+  // }, []);
+
+  // const loadFiles = async () => {
+  //   try {
+  //     const fileList = await api.getFiles();
+  //     setFiles(fileList);
+  //     const idFromUrl = searchParams.get("fileId");
+  //     setSelectedFileId(idFromUrl || (fileList[0]?.id || null));
+  //   } catch (err) {
+  //     setError("Failed to load files.");
+  //     setLoading(false);
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   if (selectedFileId) loadAnalysisData(selectedFileId);
+  // }, [selectedFileId]);
+
+  // const loadAnalysisData = async (fileId) => {
+  //   setLoading(true);
+  //   try {
+  //     const raw = await api.analyzeFile(fileId);
+  //     const parsed = transformAnalysisData(raw);
+  //     setAnalysisData(parsed);
+  //     if (parsed?.company_name) {
+  //       setCurrentCompany(parsed.company_name);
+  //       localStorage.setItem(COMPANY_STORAGE_KEY, parsed.company_name);
+  //     }
+  //   } catch (err) {
+  //     setError("Failed to load analysis.");
+  //     setAnalysisData(null);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
+  // // fetch news
+  // useEffect(() => {
+  //   const name = currentCompany?.trim();
+  //   if (!name) return;
+  //   let cancelled = false;
+  //   const getNews = async () => {
+  //     setNewsLoading(true);
+  //     try {
+  //       const res = await fetch(`${API_BASE_URL}/news/${encodeURIComponent(name)}`);
+  //       const data = await res.json();
+  //       if (!cancelled) setNews(Array.isArray(data) ? data : data.articles || []);
+  //     } catch {
+  //       if (!cancelled) setNewsError("Unable to fetch news.");
+  //     } finally {
+  //       if (!cancelled) setNewsLoading(false);
+  //     }
+  //   };
+  //   getNews();
+  //   return () => (cancelled = true);
+  // }, [currentCompany]);
+
   // ===== load files & analysis =====
   useEffect(() => {
     loadFiles();
@@ -1791,12 +1851,38 @@ export default function DashboardPage() {
     if (selectedFileId) loadAnalysisData(selectedFileId);
   }, [selectedFileId]);
 
+  // ---------- new loadAnalysisData with sessionStorage caching ----------
   const loadAnalysisData = async (fileId) => {
+    const cacheKey = `dashboard_${fileId}`;                    // session key
+    const cached = sessionStorage.getItem(cacheKey);
+
+    // If cached -> use it instantly and DO NOT fetch
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setAnalysisData(parsed);
+        setLoading(false);
+        // update company state as well (so news can use it)
+        if (parsed?.company_name) {
+          setCurrentCompany(parsed.company_name);
+          localStorage.setItem(COMPANY_STORAGE_KEY, parsed.company_name);
+        }
+        return; // no fetch
+      } catch (e) {
+        // if cache parse fails, fall through to fetch
+        console.warn("Failed to parse cached dashboard:", e);
+      }
+    }
+
+    // not cached -> fetch (first time)
     setLoading(true);
     try {
       const raw = await api.analyzeFile(fileId);
       const parsed = transformAnalysisData(raw);
+
       setAnalysisData(parsed);
+      sessionStorage.setItem(cacheKey, JSON.stringify(parsed)); // save to session
+
       if (parsed?.company_name) {
         setCurrentCompany(parsed.company_name);
         localStorage.setItem(COMPANY_STORAGE_KEY, parsed.company_name);
@@ -1809,26 +1895,51 @@ export default function DashboardPage() {
     }
   };
 
-  // fetch news
+  // fetch news (cached in sessionStorage per company)
   useEffect(() => {
     const name = currentCompany?.trim();
     if (!name) return;
+
+    const cacheKey = `news_${name}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        // optional TTL - only used if you want time based invalidation
+        // parsed.ts is epoch ms when cached
+        // We'll accept cached if present (since upload clears caches)
+        setNews(parsed.articles || []);
+        setNewsLoading(false);
+        return;
+      } catch (e) {
+        // bad cache -> fallthrough to fetch
+        console.warn("news cache parse failed", e);
+      }
+    }
+
     let cancelled = false;
     const getNews = async () => {
       setNewsLoading(true);
+      setNewsError(null);
       try {
         const res = await fetch(`${API_BASE_URL}/news/${encodeURIComponent(name)}`);
         const data = await res.json();
-        if (!cancelled) setNews(Array.isArray(data) ? data : data.articles || []);
-      } catch {
+        const articles = Array.isArray(data) ? data : data.articles || [];
+        if (!cancelled) {
+          setNews(articles);
+          sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), articles }));
+        }
+      } catch (err) {
         if (!cancelled) setNewsError("Unable to fetch news.");
       } finally {
         if (!cancelled) setNewsLoading(false);
       }
     };
     getNews();
-    return () => (cancelled = true);
+    return () => { cancelled = true; };
   }, [currentCompany]);
+
+
 
   // ===== build KPI cards =====
   const KPI_KEYS = [

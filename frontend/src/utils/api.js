@@ -61,26 +61,71 @@ export const api = {
     return await response.json();
   },
 
-  async getFiles() {
-    // Note: This endpoint doesn't exist yet in the backend
-    // For now, we'll use localStorage as a fallback
-    // TODO: Implement backend endpoint to list files
-    try {
-      const response = await fetch(`${API_BASE_URL}/files/`, {
-        method: "GET",
-      });
+  // async getFiles() {
+  //   // Note: This endpoint doesn't exist yet in the backend
+  //   // For now, we'll use localStorage as a fallback
+  //   // TODO: Implement backend endpoint to list files
+  //   try {
+  //     const response = await fetch(`${API_BASE_URL}/files/`, {
+  //       method: "GET",
+  //     });
 
+  //     if (response.ok) {
+  //       return await response.json();
+  //     }
+  //   } catch (error) {
+  //     console.warn("Files endpoint not available, using localStorage fallback");
+  //   }
+
+  //   // Fallback to localStorage
+  //   const storedFiles = localStorage.getItem("uploadedFiles");
+  //   return storedFiles ? JSON.parse(storedFiles) : [];
+  // },
+
+  // inside your api object
+  async getFiles() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/files/`, { method: "GET" });
       if (response.ok) {
-        return await response.json();
+        const serverFiles = await response.json();
+        // Merge with localStorage fallback (avoid duplicates by id or stored_as)
+        const local = JSON.parse(localStorage.getItem("uploadedFiles") || "[]");
+        const map = new Map();
+        // add server-first (server is source-of-truth)
+        for (const f of serverFiles) {
+          map.set(f.id || f.stored_as || f.name, f);
+        }
+        // add any local items that server doesn't have
+        for (const f of local) {
+          const key = f.id || f.stored_as || f.name;
+          if (!map.has(key)) map.set(key, f);
+        }
+        return Array.from(map.values());
       }
     } catch (error) {
       console.warn("Files endpoint not available, using localStorage fallback");
     }
-
-    // Fallback to localStorage
+    // fallback
     const storedFiles = localStorage.getItem("uploadedFiles");
     return storedFiles ? JSON.parse(storedFiles) : [];
   },
+
+  async saveFileMetadata(info) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/files/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(info),
+      });
+      if (res.ok) return await res.json();
+      // non-200 -> ignore but return false
+      return null;
+    } catch (err) {
+      console.warn("Failed to save metadata to server (backend may not be running)", err);
+      return null;
+    }
+  },
+
 
   async deleteFile(fileId) {
     // Note: This endpoint doesn't exist yet in the backend
@@ -106,6 +151,30 @@ export const api = {
     }
     return { message: "File deleted successfully" };
   },
+
+  // // inside export const api = { ... }
+  // async saveFileMetadata(info) {
+  //   try {
+  //     const res = await fetch(`${API_BASE_URL}/files/save`, {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(info),
+  //     });
+
+  //     if (!res.ok) {
+  //       // try to parse server error
+  //       let errBody;
+  //       try { errBody = await res.json(); } catch (_) { errBody = null; }
+  //       throw new Error((errBody && errBody.detail) || `Save metadata failed (${res.status})`);
+  //     }
+
+  //     return await res.json();
+  //   } catch (err) {
+  //     console.error("saveFileMetadata error:", err);
+  //     throw err;
+  //   }
+  // },
+
 };
 
 // File validation utilities
@@ -158,4 +227,3 @@ export const formatDate = (dateString) => {
     minute: "2-digit",
   });
 };
-
