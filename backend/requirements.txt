@@ -13,3 +13,4 @@ nltk
 scikit-learn
 scipy
 requests
+sqlalchemy

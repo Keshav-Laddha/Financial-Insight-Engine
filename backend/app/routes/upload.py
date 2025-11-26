@@ -46,54 +46,49 @@
 
 
 # app/routes/upload.py
-import os
 import uuid
 import logging
-from fastapi import APIRouter, UploadFile, File, HTTPException, status
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.utils.company_extract import extract_company_name
 
 router = APIRouter()
 logger = logging.getLogger("app.routes.upload")
 
-# Shared absolute uploads directory (same logic as analysis)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
 
 @router.post("/", status_code=201)
 async def upload_file(file: UploadFile = File(...)):
     """
-    Upload a financial document and return the stored file id.
-    Stored filename format: <uuid>_<original_filename>
+    Process uploaded file metadata without storing the actual file.
+    Only extracts metadata and returns file information.
     """
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded.")
 
     original_name = file.filename or ""
-    ext = os.path.splitext(original_name)[1].lower()
-    allowed_exts = {".pdf", ".jpg", ".jpeg", ".png", ".xlsx", ".xls", ".txt"}
+    ext = original_name.split('.')[-1].lower() if '.' in original_name else ""
+    allowed_exts = {"pdf", "jpg", "jpeg", "png", "xlsx", "xls", "txt"}
     if ext not in allowed_exts:
         raise HTTPException(status_code=415, detail=f"Unsupported file type: {ext}")
 
-    unique_name = f"{uuid.uuid4().hex}_{original_name}"
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
-
     try:
+        # Read file content to get size, but don't save it
         content = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(content)
-        logger.info("Saved upload: %s", file_path)
+        file_size = len(content)
+        
+        # Generate unique ID for metadata tracking
+        unique_id = f"{uuid.uuid4().hex}_{original_name}"
+        
+        logger.info("Processed file metadata: %s (size: %d bytes)", original_name, file_size)
     except Exception as e:
-        logger.exception("Failed to save uploaded file")
-        raise HTTPException(status_code=500, detail=f"Could not save file: {e}")
+        logger.exception("Failed to process uploaded file")
+        raise HTTPException(status_code=500, detail=f"Could not process file: {e}")
 
     detected_company = extract_company_name(original_name)
 
     return {
-        "message": "File uploaded successfully.",
-        "file_id": unique_name,
-        "stored_as": unique_name,
-        "file_path": file_path,
+        "message": "File metadata processed successfully.",
+        "file_id": unique_id,
+        "stored_as": unique_id,
+        "size": file_size,
         "company": detected_company,
     }

@@ -50,10 +50,14 @@ from fastapi import FastAPI
 from app.routes import upload, analysis, news, summary, files
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from app.database import init_db
 #from config.logging_config import configure_logging
 
 #configure_logging()
 logger = logging.getLogger("app.main")
+
+# Initialize database
+init_db()
 
 app = FastAPI(
     title="Financial Document Analysis API",
