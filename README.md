@@ -1,9 +1,12 @@
 # Financial Document Analyser and Insights Engine
 ## Automated Financial Analysis, KPI Extraction & MDA Summarization
 
-## 🚀 Live Demo:
-### Frontend: https://financial-insight-engine-1.onrender.com
-### Backend API: https://financial-insight-engine.onrender.com/docs
+[![Live Frontend](https://img.shields.io/badge/Frontend-Live-green)](https://financial-insight-engine-1.onrender.com)
+[![API Docs](https://img.shields.io/badge/API-Documentation-blue)](https://financial-insight-engine.onrender.com/docs)
+
+## 🚀 Live Demo
+- **Frontend Application**: https://financial-insight-engine-1.onrender.com
+- **Backend API & Documentation**: https://financial-insight-engine.onrender.com/docs
 
 Financial Document Analyser and Insights Engine is a web application that automatically extracts insights from RHP (Red Herring Prospectus) PDF documents.
 The tool processes uploaded PDFs to generate:
