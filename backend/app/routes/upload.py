@@ -46,6 +46,7 @@
 
 
 # app/routes/upload.py
+import os
 import uuid
 import logging
 from fastapi import APIRouter, UploadFile, File, HTTPException
@@ -54,31 +55,45 @@ from app.utils.company_extract import extract_company_name
 router = APIRouter()
 logger = logging.getLogger("app.routes.upload")
 
+# Temporary storage for analysis (files will be deleted after analysis)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TEMP_UPLOAD_DIR = os.path.normpath(os.path.join(BASE_DIR, "..", "uploads"))
+os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
+
 
 @router.post("/", status_code=201)
 async def upload_file(file: UploadFile = File(...)):
     """
-    Process uploaded file metadata without storing the actual file.
-    Only extracts metadata and returns file information.
+    Upload file temporarily for analysis.
+    File will be stored temporarily and can be deleted after analysis.
     """
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded.")
 
     original_name = file.filename or ""
-    ext = original_name.split('.')[-1].lower() if '.' in original_name else ""
+    ext = original_name.split(".")[-1].lower() if "." in original_name else ""
     allowed_exts = {"pdf", "jpg", "jpeg", "png", "xlsx", "xls", "txt"}
     if ext not in allowed_exts:
         raise HTTPException(status_code=415, detail=f"Unsupported file type: {ext}")
 
     try:
-        # Read file content to get size, but don't save it
+        # Read file content
         content = await file.read()
         file_size = len(content)
-        
-        # Generate unique ID for metadata tracking
+
+        # Generate unique ID
         unique_id = f"{uuid.uuid4().hex}_{original_name}"
-        
-        logger.info("Processed file metadata: %s (size: %d bytes)", original_name, file_size)
+
+        # Save temporarily for analysis
+        file_path = os.path.join(TEMP_UPLOAD_DIR, unique_id)
+        with open(file_path, "wb") as f:
+            f.write(content)
+
+        logger.info(
+            "Saved file temporarily for analysis: %s (size: %d bytes)",
+            original_name,
+            file_size,
+        )
     except Exception as e:
         logger.exception("Failed to process uploaded file")
         raise HTTPException(status_code=500, detail=f"Could not process file: {e}")
@@ -86,7 +101,7 @@ async def upload_file(file: UploadFile = File(...)):
     detected_company = extract_company_name(original_name)
 
     return {
-        "message": "File metadata processed successfully.",
+        "message": "File uploaded successfully.",
         "file_id": unique_id,
         "stored_as": unique_id,
         "size": file_size,

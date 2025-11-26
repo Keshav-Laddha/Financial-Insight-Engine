@@ -1,7 +1,8 @@
 """
 File management routes using SQLite database
-Stores only metadata, not physical files
+Stores only metadata, temporary files deleted after analysis
 """
+import os
 from typing import List
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
@@ -11,6 +12,12 @@ from app.database import get_db, FileMetadata
 from app.schemas.file_schema import FileMetadataSchema, FileMetadataCreate
 
 router = APIRouter()
+
+# Temporary upload directory
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+TEMP_UPLOAD_DIR = os.path.join(BASE_DIR, "backend", "app", "uploads")
+if not os.path.exists(TEMP_UPLOAD_DIR):
+    TEMP_UPLOAD_DIR = os.path.join(BASE_DIR, "app", "uploads")
 
 
 @router.get("/", response_model=List[FileMetadataSchema])
@@ -64,14 +71,22 @@ async def save_file_metadata(info: FileMetadataCreate, db: Session = Depends(get
 @router.delete("/{file_id}")
 async def delete_file(file_id: str, db: Session = Depends(get_db)):
     """
-    Delete file metadata from database.
+    Delete file metadata from database and temporary file if exists.
     """
     file_entry = db.query(FileMetadata).filter(FileMetadata.id == file_id).first()
     
     if not file_entry:
         return {"message": "File not found", "deleted": False}
     
-    # Delete from database only (no physical files stored)
+    # Try to delete temporary file if it exists
+    try:
+        temp_file_path = os.path.join(TEMP_UPLOAD_DIR, file_entry.stored_as)
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+    except Exception as e:
+        print(f"Warning: failed to remove temporary file: {e}")
+    
+    # Delete from database
     db.delete(file_entry)
     db.commit()
     
