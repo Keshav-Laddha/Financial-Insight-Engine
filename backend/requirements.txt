@@ -3,10 +3,13 @@ numpy
 fastapi
 uvicorn
 python-multipart
-python-multipart
 pdfplumber
 pytesseract
 pdf2image
 python-dotenv
 httpx
 pdfminer.six
+nltk
+scikit-learn
+scipy
+requests
