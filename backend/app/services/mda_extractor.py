@@ -4,14 +4,13 @@ import pdfplumber
 
 PAGE_OFFSET = 2   # RHPs usually start page numbering after 2 pages
 
-# Extract full text between start_page and end_page
+# full text between start_page and end_page
 def extract_mda_text(pdf_path: str, start_page: int, end_page: int) -> str:
     extracted = []
 
     with pdfplumber.open(pdf_path) as pdf:
         total_pages = len(pdf.pages)
 
-        # Convert real page numbers → zero-indexed page numbers
         start_i = max(start_page - 1 + PAGE_OFFSET, 0)
         end_i = min(end_page - 1 + PAGE_OFFSET, total_pages - 1)
 

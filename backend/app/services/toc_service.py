@@ -3,9 +3,8 @@
 import pdfplumber
 import re
 
-# --------------------------------------------------------
+
 # Extract TOC text from first 20 pages
-# --------------------------------------------------------
 def extract_toc_text(pdf_path: str) -> str:
     toc_text = []
 
@@ -21,9 +20,7 @@ def extract_toc_text(pdf_path: str) -> str:
     return "\n".join(toc_text)
 
 
-# --------------------------------------------------------
 # Detect MDA start & end page from TOC text
-# --------------------------------------------------------
 def detect_mda_page_range(toc_text: str):
     text = toc_text.lower().replace("’", "'")
     lines = [l.strip() for l in text.split("\n") if l.strip()]

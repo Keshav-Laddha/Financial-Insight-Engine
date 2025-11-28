@@ -149,53 +149,6 @@ export default function SummaryPage() {
     doc.save(`${companyName || "Company"}-Summary.pdf`);
   };
 
-  // useEffect(() => {
-  //   if (!fileId) {
-  //     setError("No file selected. Upload or select a file first.");
-  //     setLoading(false);
-  //     return;
-  //   }
-
-  //   const cachedId = localStorage.getItem(LATEST_SUMMARY_ID);
-  //   const cachedData = localStorage.getItem(LATEST_SUMMARY_DATA);
-
-  //   // ⭐ Load cached summary if valid
-  //   if (cachedId === fileId && cachedData) {
-  //     try {
-  //       const parsed = JSON.parse(cachedData);
-
-  //       if (parsed && parsed.summary) {
-  //         setSummary(parsed);
-  //         setLoading(false);
-  //         return;
-  //       }
-  //     } catch {}
-  //   }
-
-  //   // Fetch fresh
-  //   async function loadSummary() {
-  //     try {
-  //       const data = await api.getSummary(fileId);
-
-  //       // Validate backend response shape
-  //       if (!data || !data.summary) {
-  //         throw new Error("Summary not found for this file.");
-  //       }
-
-  //       localStorage.setItem(LATEST_SUMMARY_ID, fileId);
-  //       localStorage.setItem(LATEST_SUMMARY_DATA, JSON.stringify(data));
-
-  //       setSummary(data);
-  //     } catch (err) {
-  //       setError(err.message || "Failed to load summary.");
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   }
-
-  //   loadSummary();
-  // }, [fileId]);
-
   useEffect(() => {
     if (!fileId) {
       setError("No file selected. Upload or select a file first.");

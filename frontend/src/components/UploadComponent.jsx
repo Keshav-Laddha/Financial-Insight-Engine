@@ -187,35 +187,6 @@ export default function UploadComponent() {
     }
   };
 
-  // useEffect(() => {
-  //   async function loadExistingFile() {
-  //     if (!fileIdFromURL) return;
-
-  //     setLoading(true);
-  //     setUploadProgress("analyzing");
-
-  //     try {
-  //       const analysisData = await api.analyzeFile(fileIdFromURL);
-
-  //       setImportantKpis(analysisData.important_kpis || {});
-  //       setResult({ upload: { file_id: fileIdFromURL }, analysis: analysisData });
-
-  //       // Save locally so dashboard/summary also work
-  //       localStorage.setItem("LATEST_FILE_ID", fileIdFromURL);
-  //       localStorage.setItem("LATEST_ANALYSIS_DATA", JSON.stringify(analysisData));
-
-  //       setUploadProgress("complete");
-  //     } catch (err) {
-  //       console.error(err);
-  //       setError("Failed to load saved file analysis");
-  //     } finally {
-  //       setLoading(false);
-  //     }
-  //   }
-
-  //   loadExistingFile();
-  // }, [fileIdFromURL]);
-
 
   const getProgressText = () => {
     switch (uploadProgress) {

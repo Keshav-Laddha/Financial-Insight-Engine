@@ -5,18 +5,14 @@ import math
 from collections import defaultdict
 import numpy as np
 
-# ---------------------------------------------------------
 # Preprocessing
-# ---------------------------------------------------------
 def clean_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text)
     text = re.sub(r"(?<=\w)- (?=\w)", "", text)  # fix broken hyphen words
     return text.strip()
 
 
-# ---------------------------------------------------------
 # Sentence Tokenization
-# ---------------------------------------------------------
 def split_into_sentences(text: str):
     # Split at periods but keep them
     sentences = re.split(r'(?<=[.!?]) +', text)
@@ -24,18 +20,15 @@ def split_into_sentences(text: str):
     return sentences
 
 
-# ---------------------------------------------------------
 # Word Tokenization (for similarity)
-# ---------------------------------------------------------
 def tokenize(sentence: str):
     sentence = sentence.lower()
     words = re.findall(r"[a-zA-Z]{3,}", sentence)  # only words >=3 letters
     return words
 
 
-# ---------------------------------------------------------
 # Sentence Similarity (Cosine similarity)
-# ---------------------------------------------------------
+
 def sentence_similarity(sent1, sent2):
     words1 = tokenize(sent1)
     words2 = tokenize(sent2)
@@ -63,9 +56,7 @@ def sentence_similarity(sent1, sent2):
     return np.dot(v1, v2) / denom
 
 
-# ---------------------------------------------------------
 # Build Similarity Graph
-# ---------------------------------------------------------
 def build_similarity_matrix(sentences):
     n = len(sentences)
     sim_matrix = np.zeros((n, n))
@@ -84,9 +75,7 @@ def build_similarity_matrix(sentences):
     return sim_matrix
 
 
-# ---------------------------------------------------------
 # TextRank (PageRank)
-# ---------------------------------------------------------
 def textrank(sentences, eps=1e-4, d=0.85):
     n = len(sentences)
     scores = np.ones(n) / n
@@ -103,7 +92,6 @@ def textrank(sentences, eps=1e-4, d=0.85):
     return ranked
 
 
-# ---------------------------------------------------------
 # Final Summarizer
 # ---------------------------------------------------------
 def textrank_summarize(text: str, max_sentences: int = 8) -> str:
